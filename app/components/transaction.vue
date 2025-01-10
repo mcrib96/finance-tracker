@@ -1,8 +1,8 @@
 <template>
   <div
-    class="grid grid-cols-2 py-4 border-b border-gray-200 dark:border-gray-800 text-gray-900: dark:text-gray-100"
+    class="grid grid-cols-3 py-4 border-b border-gray-200 dark:border-gray-800 text-gray-900: dark:text-gray-100"
   >
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between space-x-4 col-span-2">
       <div class="flex items-center space-x-1">
         <UIcon :name="icon" :class="[iconColor]" />
         <div>{{ transaction?.description }}</div>
@@ -44,9 +44,12 @@ const iconColor = computed(() =>
 const props = defineProps({
   transaction: Object,
 });
-const emit = defineEmits(["deleted"]);
+const emit = defineEmits(["deleted", "edit"]);
 const isLoading = ref(false);
 const toast = useToast();
+const editTransaction = () => {
+  emit("edit", props.transaction);
+};
 const deleteTransaction = async () => {
   isLoading.value = true;
   try {
@@ -73,7 +76,7 @@ const items = [
     {
       label: "Edit",
       icon: "i-heroicons-pencil-square-20-solid",
-      click: () => console.log("Edit"),
+      click: editTransaction,
     },
     {
       label: "Delete",
