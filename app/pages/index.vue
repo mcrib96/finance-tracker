@@ -12,32 +12,32 @@
       color="green"
       title="Income"
       :amount="incomeTotal"
-      :last-amount="3000"
-      :loading="isLoading"
+      :last-amount="previousIncomeTotal"
+      :loading="pending"
     />
     <Trend
       color="red"
       title="Expense"
       :amount="expenseTotal"
-      :last-amount="5000"
-      :loading="isLoading"
+      :last-amount="previousExpenseTotal"
+      :loading="pending"
     />
     <Trend
       color="green"
       title="Investments"
       :amount="4000"
       :last-amount="3000"
-      :loading="isLoading"
+      :loading="pending"
     />
     <Trend
       color="red"
       title="Savings"
       :amount="4000"
       :last-amount="4100"
-      :loading="isLoading"
+      :loading="pending"
     />
   </section>
-  <section v-if="!isLoading" class="flex justify-between">
+  <section v-if="!pending" class="flex justify-between">
     <div>
       <h2 class="text-2xl font-extrabold">Transaction</h2>
       <div class="text-gray-500 dark:text-gray-400">
@@ -53,10 +53,14 @@
         label="Add"
         @click="isOpen = true"
       />
-      <TransactionModal v-model="isOpen" />
+      <TransactionModal
+        v-model="isOpen"
+        @saved="refresh()"
+        :transaction="currentTransaction"
+      />
     </div>
   </section>
-  <section v-if="!isLoading">
+  <section v-if="!pending">
     <div
       v-for="(transactionsOnDay, date) in transactionsGroupedByDate"
       :key="date"
@@ -66,7 +70,8 @@
         v-for="transaction in transactionsOnDay"
         :key="transaction.id"
         :transaction="transaction"
-        @deleted="refreshTransactions()"
+        @deleted="refresh()"
+        @edit="editTransaction"
       />
     </div>
   </section>
@@ -77,54 +82,41 @@
 
 <script setup>
 import { transactionViewOptions } from "~/constants";
-const selectedView = ref(transactionViewOptions[1]);
-const transactions = ref([]);
-const isLoading = ref(false);
-const supabase = useSupabaseClient();
 
-const income = computed(() =>
-  transactions.value.filter((t) => t.type.toLowerCase() === "income")
-);
-const expense = computed(() =>
-  transactions.value.filter((t) => t.type.toLowerCase() === "expense")
-);
-const incomeCount = computed(() => income.value.length);
-const expenseCount = computed(() => expense.value.length);
-const incomeTotal = computed(() =>
-  income.value.reduce((sum, t) => sum + t.amount, 0)
-);
-const expenseTotal = computed(() =>
-  expense.value.reduce((sum, t) => sum + t.amount, 0)
-);
+const selectedView = ref(transactionViewOptions[1]);
+const { current, previous } = useSelectedTimePeriod(selectedView);
+const {
+  transactions: {
+    grouped: { byDate: transactionsGroupedByDate },
+  },
+  pending,
+  incomeCount,
+  incomeTotal,
+  expenseCount,
+  expenseTotal,
+  refresh,
+} = useFetchTransactions(current);
+const {
+  incomeTotal: previousIncomeTotal,
+  expenseTotal: previousExpenseTotal,
+  refresh: refreshPrevious,
+} = useFetchTransactions(previous);
+await Promise.all([refresh(), refreshPrevious()]);
+
 const isOpen = ref(false);
 
-const refreshTransactions = async () =>
-  (transactions.value = await fetchTransactions());
-const fetchTransactions = async () => {
-  isLoading.value = true;
-  try {
-    const { data } = await useAsyncData("transactions", async () => {
-      const { data, error } = await supabase.from("transactions").select();
-      if (error) {
-        return [];
-      }
-      return data;
-    });
-    return data.value;
-  } finally {
-    isLoading.value = false;
-  }
+const currentTransaction = ref(null);
+const editTransaction = (transaction) => {
+  currentTransaction.value = transaction;
+  isOpen.value = true;
 };
-refreshTransactions();
-const transactionsGroupedByDate = computed(() => {
-  let grouped = {};
-  for (const transaction of transactions.value) {
-    const date = new Date(transaction.created_at).toISOString().split("T")[0];
-    if (!grouped[date]) {
-      grouped[date] = [];
+
+watch(
+  () => isOpen.value,
+  () => {
+    if (!isOpen.value) {
+      currentTransaction.value = null;
     }
-    grouped[date].push(transaction);
   }
-  return grouped;
-});
+);
 </script>
