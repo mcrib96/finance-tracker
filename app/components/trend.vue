@@ -31,23 +31,24 @@ const props = defineProps({
   color: String,
   loading: Boolean,
 });
+const { amount, lastAmount } = toRefs(props);
 
-const trendingUp = computed(() => props.amount >= props.lastAmount);
+const trendingUp = computed(() => amount.value >= lastAmount.value);
 const icon = computed(() =>
   trendingUp.value
     ? "i-heroicons-arrow-trending-up"
     : "i-heroicons-arrow-trending-down"
 );
 const percentageTrend = computed(() => {
-  if (props.amount === 0 || props.lastAmount === 0) {
+  if (amount.value === 0 || lastAmount.value === 0) {
     return "NA";
   }
-  const bigger = Math.max(props.amount, props.lastAmount);
-  const lower = Math.min(props.amount, props.lastAmount);
+  const bigger = Math.max(amount.value, lastAmount.value);
+  const lower = Math.min(amount.value, lastAmount.value);
   const ratio = ((bigger - lower) / lower) * 100;
   return `${Math.ceil(ratio)}%`;
 });
-const { currency } = useCurrency(props.amount);
+const { currency } = useCurrency(amount);
 </script>
 
 <style scoped>
